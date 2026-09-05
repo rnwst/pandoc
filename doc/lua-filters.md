@@ -295,7 +295,7 @@ variables.
     This variable is also set in custom writers.
 
 `PANDOC_SCRIPT_FILE`
-:   The name used to involve the filter. This value can be used
+:   The name used to invoke the filter. This value can be used
     to find files relative to the script file. This variable is
     also set in custom writers.
 
@@ -2118,7 +2118,7 @@ This is a pair, i.e., a plain table, with the following
 components:
 
 1. cell alignment ([Alignment]).
-2. table column width, as a fraction of the page width (number).
+2. table column width, as a fraction of the page width (number), or `ColWidthDefault` (string).
 
 ### ListAttributes {#type-listattributes}
 
@@ -4214,13 +4214,13 @@ Parameters:
 
 Returns:
 
-- table block element ([Block])
+- table block element ([Table])
 
 *Since: 2.11*
 
 ### make_sections {#pandoc.utils.make_sections}
 
-`make_sections (number_sections, baselevel, blocks)`
+`make_sections (number_sections, base_level, blocks)`
 
 Converts a list of [Block] elements into sections. `Div`s will be
 created beginning at each `Header` and containing following
@@ -4236,7 +4236,7 @@ Parameters:
 :   whether section divs should get an additional `number`
     attribute containing the section number. (boolean)
 
-`baselevel`
+`base_level`
 :   shift top-level headings to this level
     ([integer]{unknown-type="integer"}\|nil)
 
@@ -4279,7 +4279,7 @@ bibliography. Only references that are actually cited in the
 document (either with a genuine citation or with `nocite`) are
 returned. URL variables are converted to links.
 
-The structure used represent reference values corresponds to that
+The structure used to represent reference values corresponds to that
 used in CSL JSON; the return value can be use as `references`
 metadata, which is one of the values used by pandoc and citeproc
 when generating bibliographies.
@@ -4374,14 +4374,16 @@ Returns:
 
 `stringify (element)`
 
-Converts the given element (Pandoc, Meta, Block, or Inline) into a
+Converts the given element or list of elements ([Pandoc],
+[Meta], [Block], [Inline], [Blocks], or [Inlines] into a
 string with all formatting removed.
 
 Parameters:
 
 `element`
-:   some pandoc AST element ([AST
-    element]{unknown-type="AST element"})
+:   some pandoc AST element, a list of elements, a string,
+    or a list of strings
+    ([AST element]{unknown-type="AST element"})
 
 Returns:
 
@@ -4430,7 +4432,7 @@ Usage:
 Parameters:
 
 `tbl`
-:   a table ([Block])
+:   a table ([Table])
 
 Returns:
 
@@ -4542,6 +4544,8 @@ mediabag; if that fails, it will try to download it or read it
 from the local file system while respecting pandoc's "resource
 path" setting.
 
+Throws an error if it cannot retrieve the file.
+
 Usage:
 
     local diagram_url = 'https://pandoc.org/diagram.jpg'
@@ -4554,10 +4558,8 @@ Parameters:
 
 Returns:
 
-- The entry's MIME type, or `nil` if the file was not found.
-  (string)
-- Contents of the file, or `nil` if the file was not found.
-  (string)
+- The entry's MIME type (string)
+- Contents of the file (string)
 
 *Since: 2.0*
 
@@ -4585,7 +4587,7 @@ Returns:
 
 ### insert {#pandoc.mediabag.insert}
 
-`insert (filepath, mimetype, contents)`
+`insert (filepath[, mimetype], contents)`
 
 Adds a new entry to pandoc's media bag. Replaces any existing
 media bag entry the same `filepath`.
@@ -4826,7 +4828,7 @@ Parameters:
 `list`
 :   list to appended
 
-### `pandoc.List:find (needle, init)` {#pandoc.list:find}
+### `pandoc.List:find (needle[, init])` {#pandoc.list:find}
 
 Returns the value and index of the first occurrence of the
 given item.
@@ -4837,12 +4839,12 @@ Parameters:
 :   item to search for
 
 `init`
-:   index at which the search is started
+:   optional index at which the search is started, defaults to `1`
 
 Returns: first item equal to the needle, or nil if no such
 item exists.
 
-### `pandoc.List:find_if (pred, init)` {#pandoc.list:find_if}
+### `pandoc.List:find_if (pred[, init])` {#pandoc.list:find_if}
 
 Returns the value and index of the first element for which
 the predicate holds true.
@@ -4853,7 +4855,7 @@ Parameters:
 :   the predicate function
 
 `init`
-:   index at which the search is started
+:   optional index at which the search is started, defaults to `1`
 
 Returns: first item for which \`test\` succeeds, or nil if
 no such item exists.
@@ -4871,7 +4873,7 @@ Parameters:
 Returns: a new list containing all items for which \`test\`
 was true.
 
-### `pandoc.List:includes (needle, init)` {#pandoc.list:includes}
+### `pandoc.List:includes (needle[, init])` {#pandoc.list:includes}
 
 Checks if the list has an item equal to the given needle.
 
@@ -4881,7 +4883,7 @@ Parameters:
 :   item to search for
 
 `init`
-:   index at which the search is started
+:   optional index at which the search is started, defaults to `1`
 
 Returns: true if a list item is equal to the needle, false
 otherwise
@@ -5013,12 +5015,12 @@ have an effect when reading a format but not when writing it, or
 Parameters:
 
 `format`
-:   format name (string)
+:   format identifier (string)
 
 Returns:
 
 - all extensions supported for `format`
-  ([FormatExtensions]{unknown-type="FormatExtensions"})
+  ({string,...})
 
 *Since: 3.0*
 
@@ -5033,12 +5035,12 @@ a fallback list of extensions even for unknown formats.
 Parameters:
 
 `format`
-:   format name (string)
+:   format identifier (string)
 
 Returns:
 
 - default extensions enabled for `format`
-  ([FormatExtensions]{unknown-type="FormatExtensions"})
+  ({string,...})
 
 *Since: 3.0*
 
@@ -5235,18 +5237,24 @@ Parameters:
 
 ### silence {#pandoc.log.silence}
 
-`silence (fn)`
+`silence (fn[, arg1[, ...]])`
 
-Applies the function to the given arguments while preventing log
-messages from being added to the log. The warnings and info
-messages reported during the function call are returned as the
-first return value, with the results of the function call
+Executes the given callback with the given arguments while
+preventing log messages from being added to the log. The warnings
+and info messages reported during the function call are returned
+as the first return value, with the results of the function call
 following thereafter.
 
 Parameters:
 
 `fn`
-:   function to be silenced (function)
+:   callback to be silenced (function)
+
+`arg1`
+:   optional argument to be passed to the callback (any)
+
+`...`
+:   any further optional arguments for `fn` (any)
 
 Returns:
 
@@ -5536,6 +5544,8 @@ hierarchical sections and the table of contents.
 
 `make_sections (blocks[, opts])`
 
+Open issue about this function being doubly defined in pandoc.utils. Also, the `number_offset` property should be used to maket his fully compatible with a WriterOptions object, rather than using the `base_level` property. 
+
 Puts [Blocks] into a hierarchical structure: a list of sections
 (each a Div with class "section" and first element a Header).
 
@@ -5610,6 +5620,8 @@ Parameters:
 
     The following options are supported:
 
+    this isnt' propertly parsed as a definition list! Fix.
+
         `path_template`
         :   template used to generate the chunks' filepaths
             `%n` will be replaced with the chunk number (padded with
@@ -5651,7 +5663,7 @@ Generates a table of contents for the given object.
 Parameters:
 
 `toc_source`
-:   list of command line arguments
+:   document content to use for generating table of contents
     ([Blocks]\|[Pandoc]\|[ChunkedDoc])
 
 `opts`
@@ -5659,7 +5671,7 @@ Parameters:
 
 Returns:
 
-- Table of contents as a BulletList object ([Block])
+- Table of contents as a BulletList object ([BulletList])
 
 *Since: 3.0*
 
@@ -5975,7 +5987,7 @@ The results of the call to `callback`.
 
 ### with_temporary_directory {#pandoc.system.with_temporary_directory}
 
-`with_temporary_directory (parent_dir, templ, callback)`
+`with_temporary_directory ([parent_dir, ]templ, callback)`
 
 Create and use a temporary directory inside the given directory.
 The directory is deleted after the callback returns.
@@ -6304,7 +6316,7 @@ Parameters:
 :   indentation width ([integer]{unknown-type="integer"})
 
 `start`
-:   document ([Doc])
+:   prefix for first line ([Doc])
 
 Returns:
 
@@ -6322,13 +6334,13 @@ Encloses a [Doc] inside a start and end [Doc].
 Parameters:
 
 `contents`
-:   document ([Doc])
+:   document to be enclosed ([Doc])
 
 `start`
-:   document ([Doc])
+:   start document ([Doc])
 
-`end`
-:   document ([Doc])
+`_end`
+:   end document ([Doc])
 
 Returns:
 
@@ -6583,7 +6595,7 @@ Parameters:
 
 Returns:
 
-- doc height ([integer]{unknown-type="integer"}\|string)
+- doc height ([integer]{unknown-type="integer"})
 
 *Since: 2.18*
 
@@ -6858,7 +6870,7 @@ Parameters:
 
 Returns:
 
-- length ([integer]{unknown-type="integer"}\|string)
+- length ([integer]{unknown-type="integer"})
 
 *Since: 2.0.3*
 
@@ -7154,6 +7166,8 @@ Constructors for types that are not part of the pandoc AST.
 
 `Version (version_specifier)`
 
+This should really be the constructor for the [Version] type!
+
 Parameters:
 
 `version_specifier`
@@ -7332,7 +7346,7 @@ Modification time (seconds since unix epoch)
 
 ##### path {#type-pandoc.zip.Entry.path}
 
-Relative path, using `/` as separator ([zip.Entry])
+Relative path, using `/` as separator (string)
 
 #### Methods {#type-pandoc.zip.Entry-methods}
 
@@ -7342,7 +7356,7 @@ Relative path, using `/` as separator ([zip.Entry])
 
 Get the uncompressed contents of a zip entry. If `password` is
 given, then that password is used to decrypt the contents. An
-error is throws if decrypting fails.
+error is thrown if decrypting fails.
 
 Parameters:
 
